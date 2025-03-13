@@ -7,7 +7,7 @@ import { testApiConnection } from "./test-functions/testApiConnection";
 const tradingPair = "XRP/USDT"; // Trading pair
 const quantity = 1; // Amount of USD to trade
 const dropThreshold = 1; // Percentage drop required to take action
-const tpPercentage = 0.002; // Take profit percentage
+const tpPercentage = 0.0025; // Take profit percentage
 const slPercentage = 0.00125; // Stop loss percentage
 
 // Bot Initialization
