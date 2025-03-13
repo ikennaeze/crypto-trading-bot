@@ -1,0 +1,26 @@
+{
+  "name": "crypto-trading-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "nodemon index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.8.2",
+    "bybit-api": "^4.0.0",
+    "ccxt": "^4.4.67",
+    "crypto-trading-bot": "file:",
+    "dotenv": "^16.4.7",
+    "nodemon": "^3.1.9"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.4",
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  }
+}
