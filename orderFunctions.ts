@@ -72,7 +72,7 @@ export async function placeLongOrder(tradingPair: string, quantity: number, tpPe
 
   export async function stopLongOrder(tradingPair: string, quantity: number, tpPercentage: number, slPercentage: number){
     
-    console.log('\n Placing Short Order... \n');
+    console.log('\n > Placing Short Order... \n');
     try {
       const currentPriceData = await fetchCurrentPrice(tradingPair)
       const currentPrice = currentPriceData.data

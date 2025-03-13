@@ -7,8 +7,8 @@ import { testApiConnection } from "./test-functions/testApiConnection";
 const tradingPair = "XRP/USDT"; // Trading pair
 const quantity = 1; // Amount of USD to trade
 const dropThreshold = 1; // Percentage drop required to take action
-const tpPercentage = 0.004; // Take profit percentage
-const slPercentage = 0.002; // Stop loss percentage
+const tpPercentage = 0.003; // Take profit percentage
+const slPercentage = 0.0015; // Stop loss percentage
 
 // Bot Initialization
 async function runBot() {
@@ -37,7 +37,7 @@ async function runBot() {
         console.log('\n > Calculating EMAs... \n');
         const [shortTermEMAdata, longTermEMAdata] = await Promise.all([
             calculateEMA(tradingPair, 5, '1m'),
-            calculateEMA(tradingPair, 10, '1m')
+            calculateEMA(tradingPair, 20, '1m')
         ]);
 
         console.log(shortTermEMAdata.isSuccessful ? "\x1b[32m%s\x1b[0m" : "\x1b[31m%s\x1b[0m", shortTermEMAdata.isSuccessful ? "\t✔ Successfully calculated short-term EMA data" : "\t✖ Failed to calculate short-term EMA: \n\t" + shortTermEMAdata.message);
@@ -66,10 +66,15 @@ async function trade(shortTermEMA: number[], longTermEMA: number[], tradingPair:
     try {
         const crossoverResponse = await searchForCrossover(shortTermEMA, longTermEMA)
 
+        //buy long order on golden cross
         if(crossoverResponse.isGoldenCross){
+            console.log("\x1b[32m%s\x1b[0m", "\t!! Golden Cross Detected!")
             const longOrderResponse = await placeLongOrder(tradingPair.replace('/', ''), quantity, tpPercentage, slPercentage)
             console.log((longOrderResponse.isSuccessful ? "\x1b[32m%s\x1b[0m" : "\x1b[31m%s\x1b[0m"), longOrderResponse.message)
+        
+        //buy short order on death cross
         } else if(crossoverResponse.isDeathCross){
+            console.log("\x1b[32m%s\x1b[0m", "\t!! Death Cross Detected!")
             const shortOrderResponse = await stopLongOrder(tradingPair.replace('/', ''), quantity, tpPercentage, slPercentage)
             console.log((shortOrderResponse.isSuccessful ? "\x1b[32m%s\x1b[0m" : "\x1b[31m%s\x1b[0m"), shortOrderResponse.message)
         } else {
