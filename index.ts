@@ -76,7 +76,7 @@ async function trade(shortTermEMA: number[], longTermEMA: number[], tradingPair:
             console.log("\x1b[31m%s\x1b[0m", "\t✖ No Crossover Detected ¯\_(ツ)_/¯")
         }
         
-        return {isSuccessful: true, message: (crossoverResponse.isGoldenCross || crossoverResponse.isDeathCross ? "Trade sequence finished. 1 trade was made." : "Trade sequence finished. No trade has been made."), data: "who cares"}
+        return {isSuccessful: true, message: (crossoverResponse.isGoldenCross || crossoverResponse.isDeathCross ? "Trade sequence finished. 1 trade was made." : "Trade sequence finished. No trade was been made."), data: "who cares"}
     } catch (error: any) {
         return {isSuccessful: false, message: "\tFailed to make trade God knows why: " + error.message, data: error}
     }
