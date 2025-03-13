@@ -6,7 +6,6 @@ import { testApiConnection } from "./test-functions/testApiConnection";
 // Configuration
 const tradingPair = "XRP/USDT"; // Trading pair
 const quantity = 1; // Amount of USD to trade
-const dropThreshold = 1; // Percentage drop required to take action
 const tpPercentage = 0.0025; // Take profit percentage
 const slPercentage = 0.00125; // Stop loss percentage
 
@@ -37,7 +36,7 @@ async function runBot() {
         console.log('\n > Calculating EMAs... \n');
         const [shortTermEMAdata, longTermEMAdata] = await Promise.all([
             calculateEMA(tradingPair, 5, '1m'),
-            calculateEMA(tradingPair, 20, '1m')
+            calculateEMA(tradingPair, 50, '1m')
         ]);
 
         console.log(shortTermEMAdata.isSuccessful ? "\x1b[32m%s\x1b[0m" : "\x1b[31m%s\x1b[0m", shortTermEMAdata.isSuccessful ? "\t✔ Successfully calculated short-term EMA data" : "\t✖ Failed to calculate short-term EMA: \n\t" + shortTermEMAdata.message);
