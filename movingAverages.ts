@@ -1,40 +1,14 @@
 import { DefaultResponse, CrossoverResponse } from "./interfaces/responses";
 import ccxt, { bybit, OHLCV } from "ccxt";
 import { placeLongOrder, stopLongOrder } from "./orderFunctions";
+import { EMA } from "technicalindicators";
 
 const exchange = new ccxt.bybit();
 
-export async function calculateSMA(tradingPair: string, periods: number, timeframe: string): Promise<DefaultResponse> {
+export async function fetchHistoricalData(tradingPair: string, periods: number, timeframe: string): Promise<DefaultResponse> {
     // Timeframe (e.g., 1h, 1d, 1w)
     //OHLCV - (Open, High, Low, Close, Volume) - used to get historicial data
 
-    try {
-        // Initialize the exchange
-        const exchange = new ccxt.bybit();
-
-        // Fetch OHLCV data (candlestick data)
-        const ohlcv = await exchange.fetchOHLCV(tradingPair, timeframe);
-
-        // Making sure we have enough data for the given period
-        if (ohlcv.length < periods) {
-            throw new Error(`Not enough data. Required: ${periods}, Available: ${ohlcv.length}`);
-        }
-
-        // Extract closing prices (index 4 in OHLCV data)
-        const closingPrices = ohlcv.slice(-periods).map((candle: any) => candle[4]);
-
-        // Sum the closing prices
-        const sumOfClosingPrices = closingPrices.reduce((acc: number, price: number) => acc + price, 0);
-
-        const sma = sumOfClosingPrices / periods
-
-        return {isSuccessful: true, message: "Successfully calculated SMA.", data: sma};
-    } catch (error: any) {
-        return {isSuccessful: true, message: "Failed to calculate SMA: " + error.message, data: null}
-    }
-}
-
-export async function calculateEMA(tradingPair: string, periods: number, timeframe: string) {
     try {
         // Initialize the exchange
         const exchange = new ccxt.bybit();
@@ -44,52 +18,48 @@ export async function calculateEMA(tradingPair: string, periods: number, timefra
         // Fetch OHLCV data (candlestick data)
         const ohlcv = await exchange.fetchOHLCV(tradingPair, timeframe, since, 500);
 
-        // // Debug: Log the number of candles fetched
-        // console.log(`\tFetched ${ohlcv.length} candles for ${tradingPair} (${timeframe})`);
-
         // Validate OHLCV data
         if (!ohlcv || ohlcv.length === 0) {
-            throw new Error('\tNo OHLCV data found.');
+            return {isSuccessful: false, message: '\t✖ No OHLCV data found.', data: null };
         }
 
         // Ensure we have enough data for the given period
         if (ohlcv.length < periods) {
-            throw new Error(`\tNot enough data. Required: ${periods}, Available: ${ohlcv.length}`);
+            return {isSuccessful: false, message: `\t✖ Not enough data. Required: ${periods}, Available: ${ohlcv.length}`, data: null };
         }
 
-        // Extract closing prices (index 4 in OHLCV data)
-        const closingPrices = ohlcv.map((candle: any) => candle[4]);
-
-        // // Debug: Log the first and last closing prices
-        // console.log(`\tFirst closing price: ${closingPrices[0]}`);
-        // console.log(`\tLast closing price: ${closingPrices[closingPrices.length - 1]}`);
-
-        // Calculate the smoothing factor (k)
-        const k = 2 / (periods + 1);
-
-        // Calculate the SMA for the first period (initial EMA value)
-        let sma = 0;
-        for (let i = 0; i < periods; i++) {
-            sma += closingPrices[i];
-        }
-        sma /= periods;
-
-        // // Debug: Log the initial SMA
-        // console.log(`\tInitial SMA (first ${periods} periods): ${sma}`);
-
-        // Calculate the EMA for subsequent periods
-        const emaValues = [sma]; // Initialize with the SMA
-        for (let i = periods; i < closingPrices.length; i++) {
-            const ema = (closingPrices[i] * k) + (emaValues[emaValues.length - 1] * (1 - k));
-            emaValues.push(ema);
-        }
-
-        // // Debug: Log the number of EMA values calculated
-        // console.log(`\tCalculated ${emaValues.length} EMA values\n`);
-
-        return { isSuccessful: true, message: "Successfully calculated EMA.", data: emaValues };
+        return {isSuccessful: true, message: "Successfully fetched historical data.", data: ohlcv};
     } catch (error: any) {
-        return { isSuccessful: false, message: error.message, data: null };
+        return {isSuccessful: true, message: "\t✖ Failed to fetch historical data: " + error.message, data: null}
+    }
+}
+
+export function fetchClosingPrices(ohlcv: OHLCV[]){
+    if (!ohlcv || !Array.isArray(ohlcv)) {
+        console.error("\x1b[31m%s\x1b[0m", "\t✖ Error: OHLCV data is null, undefined, or not an array:", ohlcv);
+        return []; // Return an empty array or handle the error appropriately
+    }
+    
+    // Extract closing prices (index 4 in OHLCV data)
+    const closingPrices = ohlcv.map((candle: any) => candle[4]);
+    return closingPrices
+}
+
+export async function calculateEMA(tradingPair: string, EMAPeriod: number, timeframe: string): Promise<DefaultResponse>{
+    try {
+        const ohlcvResponse = await fetchHistoricalData(tradingPair, EMAPeriod, timeframe)
+
+        if(ohlcvResponse.isSuccessful){
+            const closingPrices = fetchClosingPrices(ohlcvResponse.data)
+            const emaValues = EMA.calculate({period: EMAPeriod, values: closingPrices})
+            // // Debug Logs: 
+            // console.log(`\tEMA: ${emaValues}\n`)
+            return {isSuccessful: true, message: "", data: emaValues}
+        } else {
+            return {isSuccessful: false, message: ohlcvResponse.message, data: null}
+        }
+    } catch (error: any) {
+        return {isSuccessful: false, message: error.message, data: null}
     }
 }
 

@@ -6,8 +6,8 @@ import { testApiConnection } from "./test-functions/testApiConnection";
 // Configuration
 const tradingPair = "XRP/USDT"; // Trading pair
 const quantity = 1; // Amount of USD to trade
-const tpPercentage = 0.0025; // Take profit percentage
-const slPercentage = 0.00125; // Stop loss percentage
+const tpPercentage = Math.random() * (0.005 - 0.002) + 0.002; // Take profit percentage
+const slPercentage = Math.random() * (0.003 - 0.001) + 0.001;// Stop loss percentage
 
 // Bot Initialization
 async function runBot() {
@@ -33,10 +33,10 @@ async function runBot() {
         console.log('Commencing trade sequence... \n');
 
         // Calculate EMAs
-        console.log('\n > Calculating EMAs... \n');
+        console.log('\n > Fetching data... \n');
         const [shortTermEMAdata, longTermEMAdata] = await Promise.all([
-            calculateEMA(tradingPair, 5, '1m'),
-            calculateEMA(tradingPair, 50, '1m')
+            calculateEMA(tradingPair, 50, '4h'),
+            calculateEMA(tradingPair, 200, '4h')
         ]);
 
         console.log(shortTermEMAdata.isSuccessful ? "\x1b[32m%s\x1b[0m" : "\x1b[31m%s\x1b[0m", shortTermEMAdata.isSuccessful ? "\t✔ Successfully calculated short-term EMA data" : "\t✖ Failed to calculate short-term EMA: \n\t" + shortTermEMAdata.message);
@@ -44,6 +44,7 @@ async function runBot() {
 
         const shortTermEMA = shortTermEMAdata.data;
         const longTermEMA = longTermEMAdata.data;
+
         if (shortTermEMA && longTermEMA) {
             const tradeResponse = await trade(shortTermEMA, longTermEMA, tradingPair, quantity, tpPercentage, slPercentage);
             
@@ -58,7 +59,7 @@ async function runBot() {
     executeTrade();
 
     // Set up the interval to run the trading logic every 60 seconds
-    setInterval(executeTrade, 60000);
+    setInterval(executeTrade, 60000 * 60 * 4);
 }
 // Trading Logic
 async function trade(shortTermEMA: number[], longTermEMA: number[], tradingPair: string, quantity: number, tpPercentage: number, slPercentage: number): Promise<DefaultResponse> {
