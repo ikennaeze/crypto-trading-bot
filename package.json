@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "nodemon index.ts"
+    "server": "nodemon index.ts",
+    "start": "ts-node index.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +17,8 @@
     "ccxt": "^4.4.67",
     "crypto-trading-bot": "file:",
     "dotenv": "^16.4.7",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "technicalindicators": "^3.1.0"
   },
   "devDependencies": {
     "@types/axios": "^0.14.4",

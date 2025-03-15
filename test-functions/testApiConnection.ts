@@ -43,7 +43,7 @@ export async function testApiConnection(): Promise<DefaultResponse> {
     } catch (error: any) {
         return {
             isSuccessful: false,
-            message: "Could not connect to your API. Here's why: " + error.message,
+            message: "\tCould not connect to your API. Here's why: " + error.message,
             data: null
         };
     }
