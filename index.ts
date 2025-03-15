@@ -77,10 +77,9 @@ async function runBot() {
         const previousRSI = rsiValues[rsiValues.length - 2]
         console.log(GREEN_TEXT, "\t✔ Successfully calculated the latest RSI");
 
-        //Calculating Volatility-Based Position Sizing
-        const quoteCoinBalance = await getAvailableBalance(quoteCoin)
+        //Calculating Volatility-Based Position Sizina
         const baseCoinBalance = await getAvailableBalance(baseCoin)
-        const buyQuantity = await calculatePositionSize(quoteCoinBalance, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+        const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
         const sellQuantity = await calculatePositionSize(baseCoinBalance, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
 
         //Debug logs:
@@ -89,7 +88,7 @@ async function runBot() {
             - Latest RSI: ${latestRSI} 
             - Previous RSI: ${previousRSI} 
             - Latest Closing Price: ${latestClosingPrice} 
-            - Safest Buying Quantity (in ${quoteCoin}): ${buyQuantity} 
+            - Minimum Buying Quantity (in ${quoteCoin}): ${buyQuantity} 
             - Safest Selling Quantity (in ${baseCoin}): ${sellQuantity}
             `)
 

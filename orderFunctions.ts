@@ -74,7 +74,7 @@ async function placeOrder(tradingPair: string, quantity: number, side: OrderActi
             symbol: tradingPair,
             side: side,
             orderType: 'Market',
-            qty: quantity.toString(),
+            qty: quantity.toFixed(2),
         });
 
         if (response.retCode === 0) {

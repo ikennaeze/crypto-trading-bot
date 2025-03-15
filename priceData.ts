@@ -2,7 +2,6 @@ import { DefaultResponse, CrossoverResponse } from "./interfaces/responses";
 import ccxt, { bybit, OHLCV } from "ccxt";
 import { placeLongOrder, placeShortOrder } from "./orderFunctions";
 import { EMA, RSI } from "technicalindicators";
-
 import { KlineIntervalV3, RestClientV5 } from 'bybit-api';
 import * as dotenv from 'dotenv';
 import { getAvailableBalance } from "./userData";
@@ -137,7 +136,7 @@ export async function calculatePositionSize(coinBalance: number, tradingPair: st
         // Calculate position size
         const positionSize = (coinBalance * (riskPerTrade / 100)) / (atr * multiplier);
 
-        return positionSize;
+        return positionSize > coinBalance ? coinBalance : positionSize;
     } catch (error) {
         console.error('Error calculating position size:', error);
         throw error;
