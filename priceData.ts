@@ -4,7 +4,6 @@ import { getTradingRules, placeLongOrder, placeShortOrder } from "./orderFunctio
 import { EMA, RSI } from "technicalindicators";
 import { KlineIntervalV3, RestClientV5 } from 'bybit-api';
 import * as dotenv from 'dotenv';
-import { getCoinInfo } from "./userData";
 
 dotenv.config(); // Load environment variables
 
@@ -125,8 +124,10 @@ export function calculateATR(data: { high: number; low: number; close: number }[
     return atr;
 }
 
-export async function calculatePositionSize(coinBalance: number, tradingPair: string, riskPerTrade: number, multiplier: number, period: number) {
+export async function calculateBasePositionSize(coinBalance: number, tradingPair: string, riskPerTrade: number, multiplier: number, period: number) {
     try {
+        const tradingRules = await getTradingRules(tradingPair.replace('/', ''))
+
         // Fetch historical data
         const data = await fetchKline(tradingPair, '1', period + 1); // 1-minute timeframe
 
@@ -134,14 +135,53 @@ export async function calculatePositionSize(coinBalance: number, tradingPair: st
         const atr = calculateATR(data, period);
 
         // Calculate position size
-        const positionSize = (coinBalance * (riskPerTrade / 100)) / (atr * multiplier);
+        let positionSize = (coinBalance * (riskPerTrade / 100)) / (atr * multiplier);
 
-        return positionSize > coinBalance ? coinBalance - (await getTradingRules(tradingPair)).basePrecision : positionSize;
+        //for making sure 
+        const minOrderQty = tradingRules.baseCoinMinBuyQty
+
+        if(positionSize < minOrderQty){
+            positionSize = minOrderQty
+        }
+
+        return positionSize > coinBalance ? coinBalance - tradingRules.basePrecision : positionSize;
     } catch (error) {
         console.error('Error calculating position size:', error);
         throw error;
     }
 }
+
+export async function calculateQuotePositionSize(coinBalance: number, tradingPair: string, riskPerTrade: number, multiplier: number, period: number) {
+    try {
+        const tradingRules = await getTradingRules(tradingPair.replace('/', ''))
+
+        // Fetch historical data
+        const data = await fetchKline(tradingPair, '1', period + 1); // 1-minute timeframe
+
+        // Calculate ATR
+        const atr = calculateATR(data, period);
+
+        // Calculate position size
+        let positionSize = (coinBalance * (riskPerTrade / 100)) / (atr * multiplier);
+
+        //for making sure 
+        const minOrderQty = tradingRules.baseCoinMinBuyQty
+        const minOrderQtyinUSD = await convertBaseCoinToQuoteCoin(tradingPair, minOrderQty)
+
+        if(positionSize < minOrderQtyinUSD){
+            positionSize = minOrderQtyinUSD
+            if(minOrderQtyinUSD < 1){
+                positionSize = 1.00
+            }
+        }
+
+        return positionSize > coinBalance ? coinBalance - tradingRules.basePrecision : positionSize;
+    } catch (error) {
+        console.error('Error calculating position size:', error);
+        throw error;
+    }
+}
+
 
 export function searchForCrossover(shortEMA: number[], longEMA: number[]): CrossoverResponse  {
 

@@ -1,12 +1,12 @@
 import { DefaultResponse } from "./interfaces/responses";
-import { calculateATR, calculateEMA, calculatePositionSize, calculateRSI, convertBaseCoinToQuoteCoin, fetchClosingPrices, fetchHistoricalData, fetchKline } from "./priceData";
+import { calculateATR, calculateBasePositionSize, calculateEMA, calculateQuotePositionSize, calculateRSI, convertBaseCoinToQuoteCoin, fetchClosingPrices, fetchHistoricalData, fetchKline } from "./priceData";
 import { getTradingRules, placeBuyOrder, placeSellOrder } from "./orderFunctions";
 import { testApiConnection } from "./test-functions/testApiConnection";
 import { config } from "./config"
 import { getTrueMinSellQtyByTestOrder } from "./test-functions/testSellOrder";
 import { getCoinInfo, getCoinBalances } from "./userData";
 
-// Constants
+// ConstantsYY
 const GREEN_TEXT = "\x1b[32m%s\x1b[0m";
 const RED_TEXT = "\x1b[31m%s\x1b[0m";
 const baseCoin = config.tradingPair.split('/')[0]
@@ -81,8 +81,8 @@ async function runBot() {
         const quoteCoinBalance = await getCoinInfo(quoteCoin)
         const baseCoinBalance = await getCoinInfo(baseCoin)
         // const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
-        const buyQuantity =await calculatePositionSize(config.budget, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
-        const sellQuantity = await calculatePositionSize(Number(baseCoinBalance.walletBalance), config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+        const buyQuantity =await calculateQuotePositionSize(config.budget, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+        const sellQuantity = await calculateBasePositionSize(Number(baseCoinBalance.walletBalance), config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
 
         console.log(GREEN_TEXT, "\t✔ Successfully calculated safest quantities to trade.");
 
@@ -151,8 +151,8 @@ function getTradeSignal(latestClosingPrice: number, latestEMA: number, latestRSI
     const isRSIRising = latestRSI > previousRSI; // Check if RSI is rising
     const isRSIFalling = latestRSI < previousRSI; // Check if RSI is falling
 
-    const buySignal = latestClosingPrice > latestEMA && (latestRSI < oversoldThreshold) && isRSIRising;
-    const sellSignal = latestClosingPrice < latestEMA && ((latestRSI > overboughtThreshold) || (latestRSI < oversoldThreshold)) && isRSIFalling;
+    const buySignal = latestClosingPrice > latestEMA && latestRSI < oversoldThreshold && isRSIRising;
+    const sellSignal = latestClosingPrice < latestEMA && latestRSI > overboughtThreshold && isRSIFalling;
 
     return { buySignal, sellSignal };
 }
