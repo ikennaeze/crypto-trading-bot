@@ -1,10 +1,10 @@
 import { DefaultResponse, CrossoverResponse } from "./interfaces/responses";
 import ccxt, { bybit, OHLCV } from "ccxt";
-import { placeLongOrder, placeShortOrder } from "./orderFunctions";
+import { getTradingRules, placeLongOrder, placeShortOrder } from "./orderFunctions";
 import { EMA, RSI } from "technicalindicators";
 import { KlineIntervalV3, RestClientV5 } from 'bybit-api';
 import * as dotenv from 'dotenv';
-import { getAvailableBalance } from "./userData";
+import { getAvailableBalanceOfCoin } from "./userData";
 
 dotenv.config(); // Load environment variables
 
@@ -52,17 +52,17 @@ export async function fetchHistoricalData(tradingPair: string, periods: number, 
 
         // Validate OHLCV data
         if (!ohlcv || ohlcv.length === 0) {
-            return {isSuccessful: false, message: '\tNo OHLCV data found.', data: null };
+            return {isSuccessful: false, message: '\t✖ No OHLCV data found.', data: null };
         }
 
         // Ensure we have enough data for the given period
         if (ohlcv.length < periods) {
-            return {isSuccessful: false, message: `\tNot enough data. Required: ${periods}, Available: ${ohlcv.length}`, data: null };
+            return {isSuccessful: false, message: `\t✖ Not enough data. Required: ${periods}, Available: ${ohlcv.length}`, data: null };
         }
 
-        return {isSuccessful: true, message: "Successfully calculated SMA.", data: ohlcv};
+        return {isSuccessful: true, message: "Successfully fetched historical data.", data: ohlcv};
     } catch (error: any) {
-        return {isSuccessful: true, message: "Failed to calculate SMA: " + error.message, data: null}
+        return {isSuccessful: true, message: "\t✖ Failed to fetch historical data: " + error.message, data: null}
     }
 }
 
@@ -81,7 +81,7 @@ export async function fetchKline(tradingPair: string, timeframe: KlineIntervalV3
 }
 export function fetchClosingPrices(ohlcv: OHLCV[]){
     if (!ohlcv || !Array.isArray(ohlcv)) {
-        console.error("Error: OHLCV data is null, undefined, or not an array:", ohlcv);
+        console.error("\x1b[31m%s\x1b[0m", "\t✖ Error: OHLCV data is null, undefined, or not an array:", ohlcv);
         return []; // Return an empty array or handle the error appropriately
     }
     
@@ -136,7 +136,7 @@ export async function calculatePositionSize(coinBalance: number, tradingPair: st
         // Calculate position size
         const positionSize = (coinBalance * (riskPerTrade / 100)) / (atr * multiplier);
 
-        return positionSize > coinBalance ? coinBalance : positionSize;
+        return positionSize > coinBalance ? coinBalance - (await getTradingRules(tradingPair)).basePrecision : positionSize;
     } catch (error) {
         console.error('Error calculating position size:', error);
         throw error;

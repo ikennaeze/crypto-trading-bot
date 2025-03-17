@@ -4,7 +4,7 @@ import { getTradingRules, placeBuyOrder, placeSellOrder } from "./orderFunctions
 import { testApiConnection } from "./test-functions/testApiConnection";
 import { config } from "./config"
 import { getTrueMinSellQtyByTestOrder } from "./test-functions/testSellOrder";
-import { getAvailableBalance } from "./userData";
+import { getAvailableBalanceOfCoin, getCoinBalances } from "./userData";
 
 // Constants
 const GREEN_TEXT = "\x1b[32m%s\x1b[0m";
@@ -28,7 +28,7 @@ async function runBot() {
     console.log(testConnectionData.message);
 
     if (!testConnectionData.isSuccessful) {
-        console.log(RED_TEXT, "\n(︶︹︶) Trading bot failed to boot. Please try again later.");
+        console.log(RED_TEXT, "\n(︶︹︶) Trading bot failed to boot. Trying again...");
         return;
     }
 
@@ -42,34 +42,34 @@ async function runBot() {
 
         // Fetch Data
         console.log('\n > Fetching Data... \n');
-        const ohclvResponse = await fetchHistoricalData(config.tradingPair, config.shortTermEMAPeriod, config.timeframe);
-        const klineResponse = await fetchKline(config.tradingPair.replace('/', ''), '1', config.ATRPeriod + 1)
-
-        if (!ohclvResponse.isSuccessful) {
-            console.log(RED_TEXT, `\t✖ Failed to fetch historical data, here's why: ${ohclvResponse.message}`);
-            return;
-        }
+        const ohclvResponse = await fetchHistoricalData(config.tradingPair, config.period, config.timeframe);
 
         const closingPrices = fetchClosingPrices(ohclvResponse.data);
         const latestClosingPrice = closingPrices[closingPrices.length - 1];
-        console.log(GREEN_TEXT, "\t✔ Successfully fetched historical data and closing prices");
+        
+        if(closingPrices.length <= 0){
+            console.log(RED_TEXT, `\t✖ Failed to fetch historical data and closing prices. \n\tRecommencing Trade sequence...`);
+            return;
+        }
+        
+        console.log(GREEN_TEXT, "\t✔ Successfully fetched historical data and closing prices.")
 
         // Calculate EMAs
-        const emaValues = calculateEMA(config.shortTermEMAPeriod, closingPrices);
+        const emaValues = calculateEMA(config.period, closingPrices);
 
         if (emaValues.length === 0) {
-            console.log(RED_TEXT, '\t✖ Failed to calculate EMA.');
+            console.log(RED_TEXT, '\t✖ Failed to calculate EMA. \n\tRecommencing Trade sequence...');
             return;
         }
 
         const latestEMA = emaValues[emaValues.length - 1];
-        console.log(GREEN_TEXT, "\t✔ Successfully calculated the latest EMA");
+        console.log(GREEN_TEXT, "\t✔ Successfully calculated the latest EMA.");
 
         // Calculate RSI
         const rsiValues = calculateRSI(config.RSIPeriod, closingPrices);
 
         if (rsiValues.length === 0) {
-            console.log(RED_TEXT, '\t✖ Failed to calculate RSI.');
+            console.log(RED_TEXT, '\t✖ Failed to calculate RSI. \n\tRecommencing Trade sequence...');
             return;
         }
 
@@ -78,9 +78,13 @@ async function runBot() {
         console.log(GREEN_TEXT, "\t✔ Successfully calculated the latest RSI");
 
         //Calculating Volatility-Based Position Sizina
-        const baseCoinBalance = await getAvailableBalance(baseCoin)
-        const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
+        const quoteCoinBalance = await getAvailableBalanceOfCoin(quoteCoin)
+        const baseCoinBalance = await getAvailableBalanceOfCoin(baseCoin)
+        // const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
+        const buyQuantity =await calculatePositionSize(config.budget, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
         const sellQuantity = await calculatePositionSize(baseCoinBalance, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+
+        console.log(GREEN_TEXT, "\t✔ Successfully calculated safest quantities to trade.");
 
         //Debug logs:
         console.log(`
@@ -88,13 +92,26 @@ async function runBot() {
             - Latest RSI: ${latestRSI} 
             - Previous RSI: ${previousRSI} 
             - Latest Closing Price: ${latestClosingPrice} 
-            - Minimum Buying Quantity (in ${quoteCoin}): ${buyQuantity} 
+            - Safest Buying Quantity (in ${quoteCoin}): ${buyQuantity} 
             - Safest Selling Quantity (in ${baseCoin}): ${sellQuantity}
             `)
 
         // Search for Trade Signals
         console.log('\n > Searching for trade signals... \n');
-        const tradeSignalResponse = await searchForTradeSignals(latestEMA, latestRSI, previousRSI, latestClosingPrice, config.overboughtThreshold, config.tradingPair, buyQuantity, sellQuantity, config.tpPercentage, config.slPercentage);
+
+        const tradeSignalResponse = await searchForTradeSignals(latestEMA, latestRSI, previousRSI, latestClosingPrice, config.overboughtThreshold, config.oversoldThreshold, config.tradingPair, buyQuantity, sellQuantity, config.tpPercentage, config.slPercentage);
+
+        console.log('\n > Fetching Account Balance... \n');
+
+        const coinBalances = await getCoinBalances()
+        let totalEquity: number = 0;
+
+        coinBalances.map(coin => {
+            totalEquity = totalEquity + Number(coin.usdValue)
+            console.log(`\t- Total ${coin.coin}: ${coin.walletBalance}`)
+        })
+
+        console.log(`\t- Total Equity in USD: $${totalEquity}`)
 
         console.log(`\n ${tradeSignalResponse.message}`);
         console.log('___________________________________\n');
@@ -108,18 +125,18 @@ async function runBot() {
 }
 
 // Trading Logic
-async function searchForTradeSignals(latestEMA: number, latestRSI: number, previousRSI: number, latestClosingPrice: number, overboughtThreshold: number, tradingPair: string, buyQuantity: number, sellQuantity: number, tpPercentage: number, slPercentage: number): Promise<DefaultResponse> {
+async function searchForTradeSignals(latestEMA: number, latestRSI: number, previousRSI: number, latestClosingPrice: number, overboughtThreshold: number, oversoldThreshold: number, tradingPair: string, buyQuantity: number, sellQuantity: number, tpPercentage: number, slPercentage: number): Promise<DefaultResponse> {
     try {
-        const { buySignal, sellSignal } = getTradeSignal(latestClosingPrice, latestEMA, latestRSI, previousRSI, overboughtThreshold);
+        const { buySignal, sellSignal } = getTradeSignal(latestClosingPrice, latestEMA, latestRSI, previousRSI, overboughtThreshold, oversoldThreshold);
 
         if (buySignal) {
             console.log(GREEN_TEXT, "\t!! Buy Signal Detected!");
             const buyOrderResponse = await executeTrade(TradeAction.BUY, tradingPair, buyQuantity);
-            return { isSuccessful: true, message: "Trade sequence finished. 1 trade was made.", data: buyOrderResponse };
+            return { isSuccessful: true, message: buyOrderResponse.isSuccessful ? "Trade sequence finished. 1 trade was made." : "Trade sequence finished. No trade was made.", data: buyOrderResponse };
         } else if (sellSignal) {
             console.log(RED_TEXT, "\t!! Sell Signal Detected!");
             const sellOrderResponse = await executeTrade(TradeAction.SELL, tradingPair, sellQuantity);
-            return { isSuccessful: true, message: "Trade sequence finished. 1 trade was made.", data: sellOrderResponse };
+            return { isSuccessful: true, message: sellOrderResponse.isSuccessful ? "Trade sequence finished. 1 trade was made." : "Trade sequence finished. No trade was made.", data: sellOrderResponse };
         } else {
             console.log(RED_TEXT, "\t✖ No Trade Signal Detected ¯\_(ツ)_/¯");
             return { isSuccessful: true, message: "Trade sequence finished. No trade was made.", data: null };
@@ -130,12 +147,12 @@ async function searchForTradeSignals(latestEMA: number, latestRSI: number, previ
 }
 
 // Helper Functions
-function getTradeSignal(latestClosingPrice: number, latestEMA: number, latestRSI: number, previousRSI: number, overboughtThreshold: number) {
+function getTradeSignal(latestClosingPrice: number, latestEMA: number, latestRSI: number, previousRSI: number, overboughtThreshold: number, oversoldThreshold: number) {
     const isRSIRising = latestRSI > previousRSI; // Check if RSI is rising
     const isRSIFalling = latestRSI < previousRSI; // Check if RSI is falling
 
-    const buySignal = latestClosingPrice > latestEMA && latestRSI < overboughtThreshold && isRSIRising;
-    const sellSignal = latestClosingPrice < latestEMA && ((latestRSI > overboughtThreshold) || (latestRSI < config.oversoldThreshold)) && isRSIFalling;
+    const buySignal = latestClosingPrice > latestEMA && (latestRSI < oversoldThreshold) && isRSIRising;
+    const sellSignal = latestClosingPrice < latestEMA && ((latestRSI > overboughtThreshold) || (latestRSI < oversoldThreshold)) && isRSIFalling;
 
     return { buySignal, sellSignal };
 }

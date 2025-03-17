@@ -2,6 +2,7 @@ import { RestClientV5 } from 'bybit-api';
 import * as dotenv from 'dotenv';
 import { convertBaseCoinToQuoteCoin, fetchCurrentPrice } from './priceData';
 import { DefaultResponse } from './interfaces/responses';
+import { config } from './config';
 
 dotenv.config(); // Load environment variables
 
@@ -33,6 +34,7 @@ enum OrderCategory {
 export async function getTradingRules(tradingPair: string) {
   let statusMessage = ""
   let baseCoinMinBuyQty = 0
+  let basePrecision = 0
   try {
       const response = await client.getInstrumentsInfo({
           category: 'spot', // Use 'linear' for futures
@@ -41,33 +43,38 @@ export async function getTradingRules(tradingPair: string) {
 
       if (response.retCode !== 0) {
           statusMessage = `✖ Failed to fetch trading rules: ${response.retMsg}`
-          return {baseCoinMinBuyQty, statusMessage}
+          return {baseCoinMinBuyQty, statusMessage, basePrecision}
       }
 
       if(!response.result?.list[0]){
         statusMessage = `✖ Failed to fetch list of trading rules: ${response.result.list[0]}`
-        return {baseCoinMinBuyQty, statusMessage}
+        return {baseCoinMinBuyQty, statusMessage, basePrecision}
       }
 
       const symbolInfo = response.result.list[0];
       baseCoinMinBuyQty = parseFloat(symbolInfo.lotSizeFilter.minOrderQty); // Minimum order quantity for base coin quantity
-      // const quoteCoinMinBuyQty = await convertBaseCoinToQuoteCoin(tradingPair, baseCoinMinBuyQty)
+      basePrecision = parseFloat(symbolInfo.lotSizeFilter.basePrecision)
 
-      // //Debug logs:
-      // console.log(`Lowest amount of ${symbolInfo.baseCoin} you can buy using ${symbolInfo.quoteCoin}: ${baseCoinMinBuyQty} ${symbolInfo.baseCoin}`);
-      // console.log(`Lowest amount of ${symbolInfo.quoteCoin} you need to buy ${symbolInfo.baseCoin}: ${quoteCoinMinBuyQty} ${symbolInfo.quoteCoin}`);
+    //   // //Debug logs:
+    //   console.log(`Lowest amount of ${symbolInfo.baseCoin} you can buy using ${symbolInfo.quoteCoin}: ${baseCoinMinBuyQty} ${symbolInfo.baseCoin}`);
+    //   console.log('Base Precision:', basePrecision)
       
       statusMessage = '\t✔ Successfully retrieved minimum buy quantity'
-      return { baseCoinMinBuyQty, statusMessage };
+      return { baseCoinMinBuyQty, statusMessage, basePrecision };
   } catch (error: any) {
       statusMessage = 'Error fetching trading rules: ' + error.message
-      return {baseCoinMinBuyQty, statusMessage}
+      return {baseCoinMinBuyQty, statusMessage, basePrecision}
   }
 }
 
 // Generic function to place an order
 async function placeOrder(tradingPair: string, quantity: number, side: OrderAction, category: OrderCategory, tpPrice?: string, slPrice?: string) {
     console.log(`\n > Placing ${side} Order for ${tradingPair}... \n`);
+
+    if (side == OrderAction.BUY && quantity > config.budget){
+        return { isSuccessful: false, message: `\t✖ Failed to place ${side} order due to quantity exceeding the budget.`, data: null };
+    }
+
     try {
         const response = await client.submitOrder({
             category: category,

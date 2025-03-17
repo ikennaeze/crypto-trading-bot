@@ -1,11 +1,11 @@
-import { CoinBalanceV5, RestClientV5, WalletBalanceV5 } from 'bybit-api';
+import { CoinBalanceV5, RestClientV5, WalletBalanceV5, WalletBalanceV5Coin } from 'bybit-api';
 import 'dotenv/config';
 
 const apiKey = process.env.BYBIT_API_KEY!;
 const apiSecret = process.env.BYBIT_API_SECRET!;
 
 if (!apiKey || !apiSecret) {
-  throw new Error('❌ Missing API credentials: Set BYBIT_API_KEY and BYBIT_API_SECRET in environment variables.');
+  console.error("\x1b[31m%s\x1b[0m", '\t✖ Missing API credentials: Set BYBIT_API_KEY and BYBIT_API_SECRET in environment variables.');
 }
 
 const client = new RestClientV5({
@@ -14,12 +14,12 @@ const client = new RestClientV5({
   testnet: false, // Set to `true` for testnet
 });
 
-export async function getAvailableBalance(desiredCoin: string): Promise<number> {
+export async function getAvailableBalanceOfCoin(desiredCoin: string): Promise<number> {
   try {
     const response = await client.getWalletBalance({ accountType: 'UNIFIED' });
 
     if (response.retCode !== 0) {
-      throw new Error(`Bybit API Error: ${response.retMsg} (Code: ${response.retCode})`);
+      console.error("\x1b[31m%s\x1b[0m", `\t✖ Bybit API Error: ${response.retMsg} (Code: ${response.retCode})`);
     }
 
     const coinList = response.result?.list[0]?.coin
@@ -27,7 +27,25 @@ export async function getAvailableBalance(desiredCoin: string): Promise<number> 
 
     return Number(coinBalance)
   } catch (error) {
-    console.error(`❌ Error fetching Unified Account balances:`, error);
+    console.error("\x1b[31m%s\x1b[0m", `\t✖ Error fetching Unified Account balances:`, error);
     throw error;
   }
 }
+
+export async function getCoinBalances(): Promise<WalletBalanceV5Coin[]> {
+  try {
+    const response = await client.getWalletBalance({ accountType: 'UNIFIED' });
+
+    if (response.retCode !== 0) {
+      console.error("\x1b[31m%s\x1b[0m", `\t✖ Bybit API Error: ${response.retMsg} (Code: ${response.retCode})`);
+    }
+
+    const coinList = response.result?.list[0]?.coin
+
+    return coinList
+  } catch (error) {
+    console.error("\x1b[31m%s\x1b[0m", `\t✖ Error fetching coin balances:`, error);
+    throw error;
+  }
+}
+
