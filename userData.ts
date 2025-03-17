@@ -14,7 +14,7 @@ const client = new RestClientV5({
   testnet: false, // Set to `true` for testnet
 });
 
-export async function getAvailableBalanceOfCoin(desiredCoin: string): Promise<number> {
+export async function getCoinInfo(desiredCoin: string): Promise<WalletBalanceV5Coin> {
   try {
     const response = await client.getWalletBalance({ accountType: 'UNIFIED' });
 
@@ -23,9 +23,9 @@ export async function getAvailableBalanceOfCoin(desiredCoin: string): Promise<nu
     }
 
     const coinList = response.result?.list[0]?.coin
-    const coinBalance = coinList.filter(coin => coin.coin == desiredCoin)[0].walletBalance
+    const coin = coinList.filter(coin => coin.coin == desiredCoin)[0]
 
-    return Number(coinBalance)
+    return coin
   } catch (error) {
     console.error("\x1b[31m%s\x1b[0m", `\t✖ Error fetching Unified Account balances:`, error);
     throw error;

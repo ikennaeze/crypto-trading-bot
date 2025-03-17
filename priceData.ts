@@ -4,7 +4,7 @@ import { getTradingRules, placeLongOrder, placeShortOrder } from "./orderFunctio
 import { EMA, RSI } from "technicalindicators";
 import { KlineIntervalV3, RestClientV5 } from 'bybit-api';
 import * as dotenv from 'dotenv';
-import { getAvailableBalanceOfCoin } from "./userData";
+import { getCoinInfo } from "./userData";
 
 dotenv.config(); // Load environment variables
 

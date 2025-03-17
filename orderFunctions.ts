@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { convertBaseCoinToQuoteCoin, fetchCurrentPrice } from './priceData';
 import { DefaultResponse } from './interfaces/responses';
 import { config } from './config';
+import { getCoinInfo } from './userData';
 
 dotenv.config(); // Load environment variables
 
@@ -71,11 +72,13 @@ export async function getTradingRules(tradingPair: string) {
 async function placeOrder(tradingPair: string, quantity: number, side: OrderAction, category: OrderCategory, tpPrice?: string, slPrice?: string) {
     console.log(`\n > Placing ${side} Order for ${tradingPair}... \n`);
 
-    if (side == OrderAction.BUY && quantity > config.budget){
-        return { isSuccessful: false, message: `\t✖ Failed to place ${side} order due to quantity exceeding the budget.`, data: null };
-    }
-
     try {
+        const baseCoinBalance = await getCoinInfo(tradingPair.split('/')[0])
+
+        if (side == OrderAction.BUY && (quantity > (config.budget - Number(baseCoinBalance.usdValue))) ){
+            return { isSuccessful: false, message: `\t✖ Failed to place ${side} order due to quantity exceeding the budget.`, data: null };
+        }
+
         const response = await client.submitOrder({
             category: category,
             symbol: tradingPair,

@@ -4,7 +4,7 @@ import { getTradingRules, placeBuyOrder, placeSellOrder } from "./orderFunctions
 import { testApiConnection } from "./test-functions/testApiConnection";
 import { config } from "./config"
 import { getTrueMinSellQtyByTestOrder } from "./test-functions/testSellOrder";
-import { getAvailableBalanceOfCoin, getCoinBalances } from "./userData";
+import { getCoinInfo, getCoinBalances } from "./userData";
 
 // Constants
 const GREEN_TEXT = "\x1b[32m%s\x1b[0m";
@@ -78,11 +78,11 @@ async function runBot() {
         console.log(GREEN_TEXT, "\t✔ Successfully calculated the latest RSI");
 
         //Calculating Volatility-Based Position Sizina
-        const quoteCoinBalance = await getAvailableBalanceOfCoin(quoteCoin)
-        const baseCoinBalance = await getAvailableBalanceOfCoin(baseCoin)
+        const quoteCoinBalance = await getCoinInfo(quoteCoin)
+        const baseCoinBalance = await getCoinInfo(baseCoin)
         // const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
         const buyQuantity =await calculatePositionSize(config.budget, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
-        const sellQuantity = await calculatePositionSize(baseCoinBalance, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+        const sellQuantity = await calculatePositionSize(Number(baseCoinBalance.walletBalance), config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
 
         console.log(GREEN_TEXT, "\t✔ Successfully calculated safest quantities to trade.");
 
