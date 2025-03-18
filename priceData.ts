@@ -195,7 +195,7 @@ export function searchForCrossover(shortEMA: number[], longEMA: number[]): Cross
     // Get the last two values from both arrays
     const shortPrev = shortEMA[shortEMA.length - 2];
     const shortCurr = shortEMA[shortEMA.length - 1];
-    const longPrev = longEMA[longEMA.length - 2];
+    const longPrev = longEMA[longEMA.length - 2]; 
     const longCurr = longEMA[longEMA.length - 1];
 
     // Calculate differences

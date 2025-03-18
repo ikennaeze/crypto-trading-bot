@@ -80,8 +80,9 @@ async function runBot() {
         //Calculating Volatility-Based Position Sizina
         const quoteCoinBalance = await getCoinInfo(quoteCoin)
         const baseCoinBalance = await getCoinInfo(baseCoin)
-        // const buyQuantity = await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
-        const buyQuantity =await calculateQuotePositionSize(config.budget, config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
+        const quoteCoinMinBuyQty= await convertBaseCoinToQuoteCoin(config.tradingPair, (await getTradingRules(config.tradingPair.replace('/', ''))).baseCoinMinBuyQty)
+        const buyQuantity = quoteCoinMinBuyQty < 1 ? 1 : quoteCoinMinBuyQty
+        // const buyQuantity =await calculateQuotePositionSize(Number(quoteCoinBalance.walletBalance), config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
         const sellQuantity = await calculateBasePositionSize(Number(baseCoinBalance.walletBalance), config.tradingPair.replace('/', ''), config.riskPerTrade, config.scalingFactor, config.ATRPeriod);
 
         console.log(GREEN_TEXT, "\t✔ Successfully calculated safest quantities to trade.");
@@ -151,8 +152,8 @@ function getTradeSignal(latestClosingPrice: number, latestEMA: number, latestRSI
     const isRSIRising = latestRSI > previousRSI; // Check if RSI is rising
     const isRSIFalling = latestRSI < previousRSI; // Check if RSI is falling
 
-    const buySignal = latestClosingPrice > latestEMA && latestRSI < oversoldThreshold && isRSIRising;
-    const sellSignal = latestClosingPrice < latestEMA && latestRSI > overboughtThreshold && isRSIFalling;
+    const buySignal = latestRSI < oversoldThreshold && latestRSI > (oversoldThreshold - 10)
+    const sellSignal = latestRSI > overboughtThreshold || latestRSI < (oversoldThreshold - 15)
 
     return { buySignal, sellSignal };
 }
